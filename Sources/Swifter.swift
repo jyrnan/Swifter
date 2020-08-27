@@ -124,6 +124,7 @@ public class Swifter {
     }
     
     public init(consumerKey: String, consumerSecret: String, oauthToken: String, oauthTokenSecret: String) {
+        ///很关键：这类方式是将Swift实例下的client定义成一个OAuthClient！！！
         self.client = OAuthClient(consumerKey: consumerKey, consumerSecret: consumerSecret,
                                   accessToken: oauthToken, accessTokenSecret: oauthTokenSecret)
     }
@@ -142,6 +143,9 @@ public class Swifter {
     // MARK: - JSON Requests
     
     @discardableResult
+    /**
+     应该是最主要的Json的获取方法，会根据方法不同返回
+     */
     internal func jsonRequest(path: String,
                               baseURL: TwitterURL,
                               method: HTTPMethodType,
@@ -153,6 +157,7 @@ public class Swifter {
         
         let jsonDownloadProgressHandler: HTTPRequest.DownloadProgressHandler = { [weak self] data, _, _, response in
             if let progress = downloadProgress {
+                ///如果没有传递process，则采用Seift定义的handleStreamProgress
                 self?.handleStreamProgress(data: data, response: response, handler: progress)
             }
         }
@@ -193,6 +198,9 @@ public class Swifter {
         }
     }
     
+    /**
+     这是一个JSON处理程序，并没有特定的输出
+     */
     private func handleStreamProgress(data: Data, response: HTTPURLResponse, handler: JSONSuccessHandler? = nil) {
         let chunkSeparator = "\r\n"
         if var jsonString = String(data: data, encoding: .utf8) {

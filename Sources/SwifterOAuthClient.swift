@@ -51,7 +51,9 @@ internal class OAuthClient: SwifterClientProtocol, SwifterAppProtocol {
         let credentialAccessToken = Credential.OAuthAccessToken(key: accessToken, secret: accessTokenSecret)
         self.credential = Credential(accessToken: credentialAccessToken)
     }
-    
+    /**
+     真正从Twitter获取JSON的函数，这里会利用到OAuth信息？
+     */
     func get(_ path: String,
              baseURL: TwitterURL,
              parameters: [String: Any],
@@ -59,11 +61,13 @@ internal class OAuthClient: SwifterClientProtocol, SwifterAppProtocol {
              downloadProgress: HTTPRequest.DownloadProgressHandler?,
              success: HTTPRequest.SuccessHandler?,
              failure: HTTPRequest.FailureHandler?) -> HTTPRequest {
-        let url = URL(string: path, relativeTo: baseURL.url)!
+        let url = URL(string: path, relativeTo: baseURL.url)! //组合成访问的地址
         
+        ///HTTPRequest依然是自己定义，需要进一步研究
         let request = HTTPRequest(url: url, method: .GET, parameters: parameters)
+        ///这里可能已经加入了authorization信息？
         request.headers = ["Authorization": self.authorizationHeader(for: .GET, url: url, parameters: parameters, isMediaUpload: false)]
-        request.downloadProgressHandler = downloadProgress
+        request.downloadProgressHandler = downloadProgress //
         request.successHandler = success
         request.failureHandler = failure
         request.dataEncoding = self.dataEncoding
@@ -143,8 +147,10 @@ internal class OAuthClient: SwifterClientProtocol, SwifterAppProtocol {
         request.start()
         return request
     }
-    
-    func authorizationHeader(for method: HTTPMethodType, url: URL, parameters: [String: Any], isMediaUpload: Bool) -> String {
+    /**
+     这里应该是添加了认证信息函数，生成一个Header文件供Request使用
+     */
+    func authorizationHeader(for method: HTTPMethodType, url: URL, parameters: [String: Any], isMediaUpload: Bool) -> String {//认证信息，这里从返回值是一个String，看得出应该是和Twitter需求匹配
         var authorizationParameters = [String: Any]()
         authorizationParameters["oauth_version"] = OAuth.version
         authorizationParameters["oauth_signature_method"] =  OAuth.signatureMethod
@@ -155,7 +161,7 @@ internal class OAuthClient: SwifterClientProtocol, SwifterAppProtocol {
         authorizationParameters["oauth_token"] ??= self.credential?.accessToken?.key
         
         for (key, value) in parameters where key.hasPrefix("oauth_") {
-            authorizationParameters.updateValue(value, forKey: key)
+            authorizationParameters.updateValue(value, forKey: key) //更新值？
         }
         
         let combinedParameters = authorizationParameters +| parameters
@@ -164,7 +170,7 @@ internal class OAuthClient: SwifterClientProtocol, SwifterAppProtocol {
         
         authorizationParameters["oauth_signature"] = self.oauthSignature(for: method, url: url, parameters: finalParameters, accessToken: self.credential?.accessToken)
         
-        let authorizationParameterComponents = authorizationParameters.urlEncodedQueryString(using: self.dataEncoding).components(separatedBy: "&").sorted()
+        let authorizationParameterComponents = authorizationParameters.urlEncodedQueryString(using: self.dataEncoding).components(separatedBy: "&").sorted() //这里把Parameter字典变成String再分割
         
         var headerComponents = [String]()
         for component in authorizationParameterComponents {
@@ -174,7 +180,7 @@ internal class OAuthClient: SwifterClientProtocol, SwifterAppProtocol {
             }
         }
         
-        return "OAuth " + headerComponents.joined(separator: ", ")
+        return "OAuth " + headerComponents.joined(separator: ", ") //应该是Twitter所需求的认证信息的格式？
     }
     
     func oauthSignature(for method: HTTPMethodType, url: URL, parameters: [String: Any], accessToken token: Credential.OAuthAccessToken?) -> String {
